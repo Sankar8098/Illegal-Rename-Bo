@@ -40,7 +40,9 @@ class Config(object):
     ADMIN       = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '1229852181').split()]
     FORCE_SUB   = os.environ.get("FORCE_SUB", "VillageTv") 
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "-1001870015374"))
+    WATERMARK_PATH = os.getenv('WATERMARK_PATH', 'path/to/your/watermark.png')
 
+# Database Settings
     # wes response configuration     
     WEBHOOK = bool(os.environ.get("WEBHOOK", "True"))
 
