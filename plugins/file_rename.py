@@ -131,7 +131,7 @@ async def doc(bot, update):
             video_clip = VideoFileClip(file_path)
             end_image_clip = ImageClip(ending_image_path).set_duration(5)
             final_clip = concatenate_videoclips([video_clip, end_image_clip])
-            final_clip.write_videofile(f"downloads/with_ending_{new_filename}")
+            final_clip.write_videofile(f"downloads/with_ending_{new_filename}", codec='libx264')
             file_path = f"downloads/with_ending_{new_filename}"
         except Exception as e:
             return await ms.edit(f"Error adding ending image: {e}")
