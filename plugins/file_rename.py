@@ -115,21 +115,16 @@ async def doc(bot, update):
         img.save(ph_path, "JPEG")
 
     await ms.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Tʀyɪɴɢ Tᴏ Uᴩʟᴏᴀᴅɪɴɢ....")
-    type = update.data.split("_")[1]
 
-    # Watermark video if type is video
-    if type == "video":
-        watermarked_file_path = f"downloads/watermarked_{new_filename}"
+    # Add watermark text to video
+    if file.media == MessageMediaType.VIDEO:
         watermark_text = "VillageTv"
-        
         video = VideoFileClip(file_path)
         txt_clip = TextClip(watermark_text, fontsize=24, color='white')
-        txt_clip = txt_clip.set_position(("right", "bottom")).set_duration(video.duration)
-        
-        watermarked_video = CompositeVideoClip([video, txt_clip])
-        watermarked_video.write_videofile(watermarked_file_path, codec='libx264', fps=24)
-
-        file_path = watermarked_file_path
+        txt_clip = txt_clip.set_pos(('right', 'bottom')).set_duration(video.duration)
+        video = CompositeVideoClip([video, txt_clip])
+        video.write_videofile(f"downloads/watermarked_{new_filename}")
+        file_path = f"downloads/watermarked_{new_filename}"
 
     try:
         if type == "document":
