@@ -1,92 +1,70 @@
-from config import Config
-from helper.database import db
-from pyrogram.types import Message
 from pyrogram import Client, filters
-from pyrogram.errors import FloodWait, InputUserDeactivated, UserIsBlocked, PeerIdInvalid
-from moviepy.editor import VideoFileClip, concatenate_videoclips
-import os, sys, time, asyncio, logging, datetime
+from pyrogram.enums import MessageMediaType
+from pyrogram.errors import FloodWait
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ForceReply
+
+from hachoir.metadata import extractMetadata
+from hachoir.parser import createParser
+
+from helper.utils import progress_for_pyrogram, convert, humanbytes
+from helper.database import db
+
+from asyncio import sleep
 from PIL import Image
+import os, time
+from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+@Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
+async def rename_start(client, message):
+    file = getattr(message, message.media.value)
+    filename = file.file_name  
+    if file.file_size > 2000 * 1024 * 1024:
+         return await message.reply_text("Sᴏʀʀy Bʀᴏ Tʜɪꜱ Bᴏᴛ Iꜱ Dᴏᴇꜱɴ'ᴛ Sᴜᴩᴩᴏʀᴛ Uᴩʟᴏᴀᴅɪɴɢ Fɪʟᴇꜱ Bɪɢɢᴇʀ Tʜᴀɴ 2Gʙ. ᴄᴏɴᴛᴀᴄᴛ ʙᴏᴛ <a href='https://t.me/Illegal_Developer/10'>ᴅᴇᴠᴇʟᴏᴘᴇʀ</a>")
 
-MERGE_VIDEO_PATH = "downloads/ending_video.mp4"  # Path to the video that should be merged
-
-@Client.on_message(filters.command(["stats", "status"]) & filters.user(Config.ADMIN))
-async def get_stats(bot, message):
-    total_users = await db.total_users_count()
-    uptime = time.strftime("%Hh%Mm%Ss", time.gmtime(time.time() - bot.uptime))    
-    start_t = time.time()
-    st = await message.reply('**Accessing the details.....**')    
-    end_t = time.time()
-    time_taken_s = (end_t - start_t) * 1000
-    await st.edit(text=f"**--Bot Status--** \n\n**⌚️ Bot Uptime:** {uptime} \n**🐌 Current Ping:** `{time_taken_s:.3f} ms` \n**👭 Total Users:** `{total_users}`")
-
-
-@Client.on_message(filters.private & filters.command("restart") & filters.user(Config.ADMIN))
-async def restart_bot(b, m):
-    await m.reply_text("🔄 Restarting.....")
-    os.execl(sys.executable, sys.executable, *sys.argv)
-
-
-@Client.on_message(filters.command("broadcast") & filters.user(Config.ADMIN) & filters.reply)
-async def broadcast_handler(bot: Client, m: Message):
-    await bot.send_message(Config.LOG_CHANNEL, f"{m.from_user.mention} or {m.from_user.id} has started the broadcast...")
-    all_users = await db.get_all_users()
-    broadcast_msg = m.reply_to_message
-    sts_msg = await m.reply_text("Broadcast started...!")
-    done = 0
-    failed = 0
-    success = 0
-    start_time = time.time()
-    total_users = await db.total_users_count()
-    async for user in all_users:
-        sts = await send_msg(user['_id'], broadcast_msg)
-        if sts == 200:
-            success += 1
-        else:
-            failed += 1
-        if sts == 400:
-            await db.delete_user(user['_id'])
-        done += 1
-        if not done % 20:
-            await sts_msg.edit(f"Broadcast in progress: \nTotal Users: {total_users} \nCompleted: {done} / {total_users}\nSuccess: {success}\nFailed: {failed}")
-    completed_in = datetime.timedelta(seconds=int(time.time() - start_time))
-    await sts_msg.edit(f"Broadcast completed: \nCompleted in `{completed_in}`.\n\nTotal Users: {total_users}\nCompleted: {done} / {total_users}\nSuccess: {success}\nFailed: {failed}")
-           
-async def send_msg(user_id, message):
     try:
-        await message.copy(chat_id=int(user_id))
-        return 200
+        await message.reply_text(
+            text=f"**__Pʟᴇᴀꜱᴇ Eɴᴛᴇʀ Nᴇᴡ Fɪʟᴇɴᴀᴍᴇ...__**\n\n**Oʟᴅ Fɪʟᴇ Nᴀᴍᴇ** :- `{filename}`",
+            reply_to_message_id=message.id,  
+            reply_markup=ForceReply(True)
+        )       
+        await sleep(30)
     except FloodWait as e:
-        await asyncio.sleep(e.value)
-        return await send_msg(user_id, message)
-    except InputUserDeactivated:
-        logger.info(f"{user_id} : Deactivated")
-        return 400
-    except UserIsBlocked:
-        logger.info(f"{user_id} : Blocked the bot")
-        return 400
-    except PeerIdInvalid:
-        logger.info(f"{user_id} : User ID Invalid")
-        return 400
-    except Exception as e:
-        logger.error(f"{user_id} : {e}")
-        return 500
+        await sleep(e.value)
+        await message.reply_text(
+            text=f"**__Pʟᴇᴀꜱᴇ Eɴᴛᴇʀ Nᴇᴡ Fɪʟᴇɴᴀᴍᴇ...__**\n\n**Oʟᴅ Fɪʟᴇ Nᴀᴍᴇ** :- `{filename}`",
+            reply_to_message_id=message.id,  
+            reply_markup=ForceReply(True)
+        )
+    except:
+        pass
 
-async def merge_videos(original_video_path, merge_video_path, output_path):
-    try:
-        original_clip = VideoFileClip(original_video_path)
-        merge_clip = VideoFileClip(merge_video_path)
-        final_clip = concatenate_videoclips([original_clip, merge_clip])
-        final_clip.write_videofile(output_path)
-        original_clip.close()
-        merge_clip.close()
-        final_clip.close()
-        return True
-    except Exception as e:
-        logger.error(f"Error merging videos: {e}")
-        return False
+@Client.on_message(filters.private & filters.reply)
+async def refunc(client, message):
+    reply_message = message.reply_to_message
+    if (reply_message.reply_markup) and isinstance(reply_message.reply_markup, ForceReply):
+        new_name = message.text 
+        await message.delete() 
+        msg = await client.get_messages(message.chat.id, reply_message.id)
+        file = msg.reply_to_message
+        media = getattr(file, file.media.value)
+        if not "." in new_name:
+            if "." in media.file_name:
+                extn = media.file_name.rsplit('.', 1)[-1]
+            else:
+                extn = "mkv"
+            new_name = new_name + "." + extn
+        await reply_message.delete()
+
+        button = [[InlineKeyboardButton("📁 Dᴏᴄᴜᴍᴇɴᴛ", callback_data="upload_document")]]
+        if file.media in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
+            button.append([InlineKeyboardButton("🎥 Vɪᴅᴇᴏ", callback_data="upload_video")])
+        elif file.media == MessageMediaType.AUDIO:
+            button.append([InlineKeyboardButton("🎵 Aᴜᴅɪᴏ", callback_data="upload_audio")])
+        await message.reply(
+            text=f"**Sᴇʟᴇᴄᴛ Tʜᴇ Oᴜᴛᴩᴜᴛ Fɪʟᴇ Tyᴩᴇ**\n**• Fɪʟᴇ Nᴀᴍᴇ :-**`{new_name}`",
+            reply_to_message_id=file.id,
+            reply_markup=InlineKeyboardMarkup(button)
+        )
 
 @Client.on_callback_query(filters.regex("upload"))
 async def doc(bot, update):    
@@ -95,12 +73,12 @@ async def doc(bot, update):
     file_path = f"downloads/{new_filename}"
     file = update.message.reply_to_message
 
-    ms = await update.message.edit("Trying to download....")    
+    ms = await update.message.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Tʀyɪɴɢ Tᴏ Dᴏᴡɴʟᴏᴀᴅɪɴɢ....")    
     try:
-        path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("Download started....", ms, time.time()))                    
+        path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Dᴏᴡɴʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))                    
     except Exception as e:
         return await ms.edit(e)
-         
+
     duration = 0
     try:
         metadata = extractMetadata(createParser(file_path))
@@ -118,10 +96,10 @@ async def doc(bot, update):
         try:
             caption = c_caption.format(filename=new_filename, filesize=humanbytes(media.file_size), duration=convert(duration))
         except Exception as e:
-            return await ms.edit(text=f"Your caption error except keyword argument ●> ({e})")             
+            return await ms.edit(text=f"Yᴏᴜʀ Cᴀᴩᴛɪᴏɴ Eʀʀᴏʀ Exᴄᴇᴩᴛ Kᴇyᴡᴏʀᴅ Aʀɢᴜᴍᴇɴᴛ ●> ({e})")             
     else:
         caption = f"**{new_filename}**"
- 
+
     if (media.thumbs or c_thumb):
         if c_thumb:
             ph_path = await bot.download_media(c_thumb) 
@@ -132,14 +110,22 @@ async def doc(bot, update):
         img.resize((320, 320))
         img.save(ph_path, "JPEG")
 
-    await ms.edit("Trying to upload....")
+    await ms.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Tʀyɪɴɢ Tᴏ Uᴩʟᴏᴀᴅɪɴɢ....")
     type = update.data.split("_")[1]
-    
-    # Merge video if the type is video
+
+    # Watermark video if type is video
     if type == "video":
-        output_path = f"downloads/merged_{new_filename}"
-        if await merge_videos(file_path, MERGE_VIDEO_PATH, output_path):
-            file_path = output_path
+        watermarked_file_path = f"downloads/watermarked_{new_filename}"
+        watermark_text = "VillageTv"
+        
+        video = VideoFileClip(file_path)
+        txt_clip = TextClip(watermark_text, fontsize=24, color='white')
+        txt_clip = txt_clip.set_position(("right", "bottom")).set_duration(video.duration)
+        
+        watermarked_video = CompositeVideoClip([video, txt_clip])
+        watermarked_video.write_videofile(watermarked_file_path, codec='libx264', fps=24)
+
+        file_path = watermarked_file_path
 
     try:
         if type == "document":
@@ -149,7 +135,7 @@ async def doc(bot, update):
                 thumb=ph_path, 
                 caption=caption, 
                 progress=progress_for_pyrogram,
-                progress_args=("Upload started....", ms, time.time()))
+                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))
         elif type == "video": 
             await bot.send_video(
                 update.message.chat.id,
@@ -158,7 +144,7 @@ async def doc(bot, update):
                 thumb=ph_path,
                 duration=duration,
                 progress=progress_for_pyrogram,
-                progress_args=("Upload started....", ms, time.time()))
+                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))
         elif type == "audio": 
             await bot.send_audio(
                 update.message.chat.id,
@@ -167,29 +153,14 @@ async def doc(bot, update):
                 thumb=ph_path,
                 duration=duration,
                 progress=progress_for_pyrogram,
-                progress_args=("Upload started....", ms, time.time()))
+                progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))
     except Exception as e:          
         os.remove(file_path)
         if ph_path:
             os.remove(ph_path)
-        return await ms.edit(f" Error {e}")
- 
+        return await ms.edit(f" Eʀʀᴏʀ {e}")
+
     await ms.delete() 
     os.remove(file_path) 
-    if ph_path: os.remove(ph_path) 
+    if ph_path: os.remove(ph_path)
 
-# Command to set the merge video
-@Client.on_message(filters.command("setmergevideo") & filters.user(Config.ADMIN) & filters.reply)
-async def set_merge_video(bot, message):
-    if not message.reply_to_message.video:
-        return await message.reply_text("Please reply to a video to set it as the ending video.")
-    
-    ms = await message.reply_text("Downloading video...")
-    video_path = f"downloads/ending_video.mp4"
-    
-    try:
-        await bot.download_media(message.reply_to_message, file_name=video_path)
-        await ms.edit("Video set successfully as the ending video!")
-    except Exception as e:
-        logger.error(f"Error downloading video: {e}")
-        await ms.edit(f"Failed to set the video: {e}")
