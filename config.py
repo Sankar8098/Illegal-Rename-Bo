@@ -40,7 +40,7 @@ class Config(object):
     ADMIN       = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '1229852181').split()]
     FORCE_SUB   = os.environ.get("FORCE_SUB", "VillageTv") 
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "-1001870015374"))
-    WATERMARK_PATH = os.getenv('WATERMARK_PATH', 'path/to/your/watermark.png')
+    WATERMARK_PATH = os.getenv('WATERMARK_PATH', 'https://telegra.ph/file/fb69b8524027808ab86c8.jpg')
 
 # Database Settings
     # wes response configuration     
