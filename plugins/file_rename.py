@@ -75,7 +75,7 @@ async def doc(bot, update):
 
     ms = await update.message.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴩᴇʀꜱ Tʀyɪɴɢ Tᴏ Dᴏᴡɴʟᴏᴀᴅɪɴɢ....")    
     try:
-        path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Dᴏᴡɴʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))                    
+        path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴩᴇʀꜱ Dᴏᴡɴʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))                    
     except Exception as e:
         return await ms.edit(e)
 
@@ -116,10 +116,13 @@ async def doc(bot, update):
     if file.media == MessageMediaType.VIDEO:
         watermark_text = "VillageTv"
         
+        # Path to your font file
+        font_path = "/path/to/your/font/arial.ttf"  # Change this to the correct path
+
         # Create a PIL image with the text
         txt_img = Image.new('RGBA', (640, 480), (0, 0, 0, 0))
         d = ImageDraw.Draw(txt_img)
-        fnt = ImageFont.truetype('arial.ttf', 24)
+        fnt = ImageFont.truetype(font_path, 24)
         text_width, text_height = d.textsize(watermark_text, font=fnt)
         d.text((txt_img.width - text_width - 10, txt_img.height - text_height - 10), watermark_text, font=fnt, fill=(255, 255, 255, 128))
         
@@ -145,8 +148,9 @@ async def doc(bot, update):
                 update.message.chat.id,
                 video=file_path,
                 caption=caption,
-                thumb=ph_path,
                 duration=duration,
+                thumb=ph_path,
+                supports_streaming=True,
                 progress=progress_for_pyrogram,
                 progress_args=("Uᴩʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))
         elif type == "audio": 
