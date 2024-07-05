@@ -14,6 +14,7 @@ from PIL import Image
 from moviepy.editor import VideoFileClip, ImageClip, concatenate_videoclips
 
 import os, time
+import requests
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
 async def rename_start(client, message):
@@ -116,8 +117,15 @@ async def doc(bot, update):
     # Add ending image to the video
     ending_image_url = "https://telegra.ph/file/fb69b8524027808ab86c8.jpg"  # URL of the ending image
     ending_image_path = "downloads/ending_image.jpg"
-    await bot.download_media(ending_image_url, file_name=ending_image_path)
     
+    # Download the ending image using requests
+    response = requests.get(ending_image_url)
+    if response.status_code == 200:
+        with open(ending_image_path, 'wb') as f:
+            f.write(response.content)
+    else:
+        return await ms.edit(f"Failed to download ending image from {ending_image_url}")
+
     if media.file_name.endswith(('mp4', 'mkv', 'avi', 'mov')):
         try:
             video_clip = VideoFileClip(file_path)
@@ -161,10 +169,9 @@ async def doc(bot, update):
         os.remove(file_path)
         if ph_path:
             os.remove(ph_path)
-        return await ms.edit(f" Eʀʀᴏʀ {e}")
+        return await ms.edit(f"Error {e}")
  
     await ms.delete() 
     os.remove(file_path) 
     if ph_path: os.remove(ph_path) 
     os.remove(ending_image_path)  # Clean up the downloaded ending image
-	    
