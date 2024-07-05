@@ -26,8 +26,8 @@ id_pattern = re.compile(r'^.\d+$')
 
 class Config(object):
     # pyro client config
-    API_ID    = os.environ.get("API_ID", "")
-    API_HASH  = os.environ.get("API_HASH", "")
+    API_ID    = os.environ.get("API_ID", "23990433")
+    API_HASH  = os.environ.get("API_HASH", "e6c4b6ee1933711bc4da9d7d17e1eb20")
     BOT_TOKEN = os.environ.get("BOT_TOKEN", "") 
    
     # database config
@@ -38,7 +38,7 @@ class Config(object):
     BOT_UPTIME  = time.time()
     START_PIC   = os.environ.get("START_PIC", "https://graph.org/file/5ba316e179b39faa71904.jpg")
     ADMIN       = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '1229852181').split()]
-    FORCE_SUB   = os.environ.get("FORCE_SUB", "Illegal_Developer") 
+    FORCE_SUB   = os.environ.get("FORCE_SUB", "VillageTv") 
     LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", None))
 
     # wes response configuration     
