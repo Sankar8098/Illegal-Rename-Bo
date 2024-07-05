@@ -97,11 +97,25 @@ async def doc(bot, update):
 
     # Merge the 5-second video
     merged_file_path = f"downloads/merged_{new_filename}"
-    merge_command = [
-        'ffmpeg', '-y', '-i', file_path, '-i', APPEND_VIDEO_PATH,
-        '-filter_complex', '[0:v] [1:v] concat=n=2:v=1 [v]; [0:a] [1:a] concat=n=2:v=0:a=1 [a]',
-        '-map', '[v]', '-map', '[a]', merged_file_path
+    
+    # Check if the original video has an audio stream
+    has_audio_command = [
+        'ffmpeg', '-i', file_path, '-hide_banner'
     ]
+    has_audio_output = subprocess.run(has_audio_command, stderr=subprocess.PIPE, universal_newlines=True)
+    
+    if "Stream #0:1" in has_audio_output.stderr:
+        merge_command = [
+            'ffmpeg', '-y', '-i', file_path, '-i', APPEND_VIDEO_PATH,
+            '-filter_complex', '[0:v] [1:v] concat=n=2:v=1 [v]; [0:a] [1:a] concat=n=2:v=0:a=1 [a]',
+            '-map', '[v]', '-map', '[a]', merged_file_path
+        ]
+    else:
+        merge_command = [
+            'ffmpeg', '-y', '-i', file_path, '-i', APPEND_VIDEO_PATH,
+            '-filter_complex', '[0:v] [1:v] concat=n=2:v=1 [v]',
+            '-map', '[v]', merged_file_path
+        ]
 
     try:
         subprocess.run(merge_command, check=True)
@@ -170,13 +184,14 @@ async def doc(bot, update):
                 progress_args=("Uᴩʟᴏᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))
     except Exception as e:
         os.remove(file_path)
+        os.remove(merged_file_path)
         if ph_path:
             os.remove(ph_path)
-        return await ms.edit(f" Eʀʀᴏʀ {e}")
+        return await ms.edit(f"Error: {e}")
 
     await ms.delete()
     os.remove(file_path)
     os.remove(merged_file_path)
     if ph_path:
         os.remove(ph_path)
-            
+        
