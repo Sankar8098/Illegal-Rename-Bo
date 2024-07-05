@@ -13,13 +13,17 @@ from asyncio import sleep
 from PIL import Image
 import os, time
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
+import moviepy.config as mpy_conf
+
+# Set the path to ImageMagick
+mpy_conf.change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})  # Adjust this path if necessary
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
 async def rename_start(client, message):
     file = getattr(message, message.media.value)
     filename = file.file_name  
     if file.file_size > 2000 * 1024 * 1024:
-         return await message.reply_text("Sᴏʀʀy Bʀᴏ Tʜɪꜱ Bᴏᴛ Iꜱ Dᴏᴇꜱɴ'ᴛ Sᴜᴩᴩᴏʀᴛ Uᴩʟᴏᴀᴅɪɴɢ Fɪʟᴇꜱ Bɪɢɢᴇʀ Tʜᴀɴ 2Gʙ. ᴄᴏɴᴛᴀᴄᴛ ʙᴏᴛ <a href='https://t.me/Illegal_Developer/10'>ᴅᴇᴠᴇʟᴏᴘᴇʀ</a>")
+        return await message.reply_text("Sᴏʀʀy Bʀᴏ Tʜɪꜱ Bᴏᴛ Iꜱ Dᴏᴇꜱɴ'ᴛ Sᴜᴩᴩᴏʀᴛ Uᴩʟᴏᴀᴅɪɴɢ Fɪʟᴇꜱ Bɪɢɢᴇʀ Tʜᴀɴ 2Gʙ. ᴄᴏɴᴛᴀᴄᴛ ʙᴏᴛ <a href='https://t.me/Illegal_Developer/10'>ᴅᴇᴠᴇʟᴏᴩᴇʀ</a>")
 
     try:
         await message.reply_text(
@@ -163,4 +167,3 @@ async def doc(bot, update):
     await ms.delete() 
     os.remove(file_path) 
     if ph_path: os.remove(ph_path)
-
