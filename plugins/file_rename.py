@@ -10,13 +10,9 @@ from helper.utils import progress_for_pyrogram, convert, humanbytes
 from helper.database import db
 
 from asyncio import sleep
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 import os, time
-from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
-import moviepy.config as mpy_conf
-
-# Set the path to ImageMagick
-mpy_conf.change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})  # Adjust this path if necessary
+from moviepy.editor import VideoFileClip, CompositeVideoClip, ImageClip
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
 async def rename_start(client, message):
@@ -77,7 +73,7 @@ async def doc(bot, update):
     file_path = f"downloads/{new_filename}"
     file = update.message.reply_to_message
 
-    ms = await update.message.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Tʀyɪɴɢ Tᴏ Dᴏᴡɴʟᴏᴀᴅɪɴɢ....")    
+    ms = await update.message.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴩᴇʀꜱ Tʀyɪɴɢ Tᴏ Dᴏᴡɴʟᴏᴀᴅɪɴɢ....")    
     try:
         path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Dᴏᴡɴʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))                    
     except Exception as e:
@@ -114,14 +110,23 @@ async def doc(bot, update):
         img.resize((320, 320))
         img.save(ph_path, "JPEG")
 
-    await ms.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Tʀyɪɴɢ Tᴏ Uᴩʟᴏᴀᴅɪɴɢ....")
+    await ms.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴩᴇʀꜱ Tʀyɪɴɢ Tᴏ Uᴩʟᴏᴀᴅɪɴɢ....")
 
     # Add watermark text to video
     if file.media == MessageMediaType.VIDEO:
         watermark_text = "VillageTv"
+        
+        # Create a PIL image with the text
+        txt_img = Image.new('RGBA', (640, 480), (0, 0, 0, 0))
+        d = ImageDraw.Draw(txt_img)
+        fnt = ImageFont.truetype('arial.ttf', 24)
+        text_width, text_height = d.textsize(watermark_text, font=fnt)
+        d.text((txt_img.width - text_width - 10, txt_img.height - text_height - 10), watermark_text, font=fnt, fill=(255, 255, 255, 128))
+        
+        # Convert the PIL image to a MoviePy ImageClip
+        txt_clip = ImageClip(txt_img).set_duration(duration).set_pos(('right', 'bottom'))
+        
         video = VideoFileClip(file_path)
-        txt_clip = TextClip(watermark_text, fontsize=24, color='white')
-        txt_clip = txt_clip.set_pos(('right', 'bottom')).set_duration(video.duration)
         video = CompositeVideoClip([video, txt_clip])
         video.write_videofile(f"downloads/watermarked_{new_filename}")
         file_path = f"downloads/watermarked_{new_filename}"
