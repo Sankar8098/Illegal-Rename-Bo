@@ -10,20 +10,49 @@ from helper.utils import progress_for_pyrogram, convert, humanbytes
 from helper.database import db
 
 from asyncio import sleep
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 import os, time
-from moviepy.editor import VideoFileClip, CompositeVideoClip, ImageClip
+import requests
+from io import BytesIO
+
+
+# Function to open image from URL or local path
+def open_image(image_source):
+    if os.path.exists(image_source):
+        return Image.open(image_source)
+    else:
+        response = requests.get(image_source)
+        return Image.open(BytesIO(response.content))
+
+
+# Function to apply a transparent watermark
+def apply_transparent_watermark(original_path, watermark_path, output_path, position=(0, 0)):
+    original = Image.open(original_path).convert("RGBA")
+    watermark = Image.open(watermark_path).convert("RGBA")
+    
+    combined = Image.new("RGBA", original.size)
+    combined.paste(original, (0, 0))
+    combined.paste(watermark, position, watermark)
+    combined = combined.convert("RGB")
+    combined.save(output_path)
+
+
+# Function to cleanup temporary files
+def cleanup(*files):
+    for file in files:
+        os.remove(file)
+
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
 async def rename_start(client, message):
     file = getattr(message, message.media.value)
     filename = file.file_name  
     if file.file_size > 2000 * 1024 * 1024:
-        return await message.reply_text("Sorry, this bot does not support uploading files larger than 2GB.")
+        return await message.reply_text("Sorry, this bot doesn't support uploading files bigger than 2GB. Contact bot developer.")
 
     try:
         await message.reply_text(
-            text=f"Please enter new filename...\n\nOld filename: `{filename}`",
+            text=f"**Please enter new filename...**\n\n**Old file name** :- `{filename}`",
             reply_to_message_id=message.id,  
             reply_markup=ForceReply(True)
         )       
@@ -31,12 +60,13 @@ async def rename_start(client, message):
     except FloodWait as e:
         await sleep(e.value)
         await message.reply_text(
-            text=f"Please enter new filename...\n\nOld filename: `{filename}`",
+            text=f"**Please enter new filename...**\n\n**Old file name** :- `{filename}`",
             reply_to_message_id=message.id,  
             reply_markup=ForceReply(True)
         )
     except:
         pass
+
 
 @Client.on_message(filters.private & filters.reply)
 async def refunc(client, message):
@@ -48,10 +78,7 @@ async def refunc(client, message):
         file = msg.reply_to_message
         media = getattr(file, file.media.value)
         if not "." in new_name:
-            if "." in media.file_name:
-                extn = media.file_name.rsplit('.', 1)[-1]
-            else:
-                extn = "mkv"
+            extn = media.file_name.rsplit('.', 1)[-1] if "." in media.file_name else "mkv"
             new_name = new_name + "." + extn
         await reply_message.delete()
 
@@ -61,10 +88,11 @@ async def refunc(client, message):
         elif file.media == MessageMediaType.AUDIO:
             button.append([InlineKeyboardButton("🎵 Audio", callback_data="upload_audio")])
         await message.reply(
-            text=f"Select the output file type\nFile name: `{new_name}`",
+            text=f"**Select the output file type**\n**• File name :-** `{new_name}`",
             reply_to_message_id=file.id,
             reply_markup=InlineKeyboardMarkup(button)
         )
+
 
 @Client.on_callback_query(filters.regex("upload"))
 async def doc(bot, update):    
@@ -73,9 +101,9 @@ async def doc(bot, update):
     file_path = f"downloads/{new_filename}"
     file = update.message.reply_to_message
 
-    ms = await update.message.edit("Downloading file...")    
+    ms = await update.message.edit("Downloading...")    
     try:
-        path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("Downloading started....", ms, time.time()))                    
+        path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("Downloading...", ms, time.time()))                    
     except Exception as e:
         return await ms.edit(e)
 
@@ -86,6 +114,7 @@ async def doc(bot, update):
             duration = metadata.get('duration').seconds
     except:
         pass
+
     ph_path = None
     user_id = int(update.message.chat.id) 
     media = getattr(file, file.media.value)
@@ -96,79 +125,40 @@ async def doc(bot, update):
         try:
             caption = c_caption.format(filename=new_filename, filesize=humanbytes(media.file_size), duration=convert(duration))
         except Exception as e:
-            return await ms.edit(text=f"Your caption error Exception argument ●> ({e})")             
+            return await ms.edit(text=f"Caption error: {e}")             
     else:
         caption = f"**{new_filename}**"
 
     if (media.thumbs or c_thumb):
-        if c_thumb:
-            ph_path = await bot.download_media(c_thumb) 
-        else:
-            ph_path = await bot.download_media(media.thumbs[0].file_id)
+        ph_path = await bot.download_media(c_thumb) if c_thumb else await bot.download_media(media.thumbs[0].file_id)
         Image.open(ph_path).convert("RGB").save(ph_path)
         img = Image.open(ph_path)
         img.resize((320, 320))
         img.save(ph_path, "JPEG")
 
-    await ms.edit("Uploading....")
-
-    # Add watermark text to video
+    # Applying watermark if the media is a video
+    watermark_path = 'path/to/watermark.png'  # Path to your watermark image
     if file.media == MessageMediaType.VIDEO:
-        watermark_text = "VillageTv"
-        
-        # Example using a system font (DejaVu Sans)
-        font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"  # Adjust the path as needed
+        watermarked_path = f"downloads/watermarked_{new_filename}"
+        apply_transparent_watermark(file_path, watermark_path, watermarked_path)
+        file_path = watermarked_path
 
-        # Create a PIL image with the text
-        txt_img = Image.new('RGBA', (640, 480), (0, 0, 0, 0))
-        d = ImageDraw.Draw(txt_img)
-        fnt = ImageFont.truetype(font_path, 24)
-        text_width, text_height = d.textsize(watermark_text, font=fnt)
-        d.text((txt_img.width - text_width - 10, txt_img.height - text_height - 10), watermark_text, font=fnt, fill=(255, 255, 255, 128))
-        
-        # Convert the PIL image to a MoviePy ImageClip
-        txt_clip = ImageClip(txt_img).set_duration(duration).set_pos(('right', 'bottom'))
-        
-        video = VideoFileClip(file_path)
-        video = CompositeVideoClip([video, txt_clip])
-        video.write_videofile(f"downloads/watermarked_{new_filename}")
-        file_path = f"downloads/watermarked_{new_filename}"
-
+    await ms.edit("Uploading...")
+    upload_type = update.data.split("_")[1]
     try:
-        if type == "document":
-            await bot.send_document(
-                update.message.chat.id,
-                document=file_path,
-                thumb=ph_path, 
-                caption=caption, 
-                progress=progress_for_pyrogram,
-                progress_args=("Uploading started....", ms, time.time()))
-        elif type == "video": 
-            await bot.send_video(
-                update.message.chat.id,
-                video=file_path,
-                caption=caption,
-                duration=duration,
-                thumb=ph_path,
-                supports_streaming=True,
-                progress=progress_for_pyrogram,
-                progress_args=("Uploading started....", ms, time.time()))
-        elif type == "audio": 
-            await bot.send_audio(
-                update.message.chat.id,
-                audio=file_path,
-                caption=caption,
-                thumb=ph_path,
-                duration=duration,
-                progress=progress_for_pyrogram,
-                progress_args=("Uploading started....", ms, time.time()))
+        if upload_type == "document":
+            await bot.send_document(update.message.chat.id, document=file_path, thumb=ph_path, caption=caption, progress=progress_for_pyrogram, progress_args=("Uploading...", ms, time.time()))
+        elif upload_type == "video": 
+            await bot.send_video(update.message.chat.id, video=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=("Uploading...", ms, time.time()))
+        elif upload_type == "audio": 
+            await bot.send_audio(update.message.chat.id, audio=file_path, caption=caption, thumb=ph_path, duration=duration, progress=progress_for_pyrogram, progress_args=("Uploading...", ms, time.time()))
     except Exception as e:          
         os.remove(file_path)
         if ph_path:
             os.remove(ph_path)
-        return await ms.edit(f" Error {e}")
+        return await ms.edit(f"Error: {e}")
 
     await ms.delete() 
     os.remove(file_path) 
     if ph_path: os.remove(ph_path)
-        
+
