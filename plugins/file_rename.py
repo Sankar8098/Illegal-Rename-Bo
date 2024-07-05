@@ -89,33 +89,20 @@ async def doc(bot, update):
     file_path = f"downloads/{new_filename}"
     file = update.message.reply_to_message
 
-    ms = await update.message.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Tʀyɪɴɢ Tᴏ Dᴏᴡɴʟᴏᴀᴅɪɴɢ....")
+    ms = await update.message.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴩᴇʀꜱ Tʀyɪɴɢ Tᴏ Dᴏᴡɴʟᴏᴀᴅɪɴɢ....")
     try:
-        path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Dᴏᴡɴʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))
+        path = await bot.download_media(message=file, file_name=file_path, progress=progress_for_pyrogram, progress_args=("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴩᴇʀꜱ Dᴏᴡɴʟᴏᴀᴅ Sᴛᴀʀᴛᴇᴅ....", ms, time.time()))
     except Exception as e:
         return await ms.edit(e)
 
     # Merge the 5-second video
     merged_file_path = f"downloads/merged_{new_filename}"
-    
-    # Check if the original video has an audio stream
-    has_audio_command = [
-        'ffmpeg', '-i', file_path, '-hide_banner'
+
+    merge_command = [
+        'ffmpeg', '-y', '-i', file_path, '-i', APPEND_VIDEO_PATH,
+        '-filter_complex', '[0:v] [1:v] concat=n=2:v=1 [v]; [0:a:0?] [1:a:0?] concat=n=2:v=0:a=1 [a]',
+        '-map', '[v]', '-map', '[a]', merged_file_path
     ]
-    has_audio_output = subprocess.run(has_audio_command, stderr=subprocess.PIPE, universal_newlines=True)
-    
-    if "Stream #0:1" in has_audio_output.stderr:
-        merge_command = [
-            'ffmpeg', '-y', '-i', file_path, '-i', APPEND_VIDEO_PATH,
-            '-filter_complex', '[0:v] [1:v] concat=n=2:v=1 [v]; [0:a] [1:a] concat=n=2:v=0:a=1 [a]',
-            '-map', '[v]', '-map', '[a]', merged_file_path
-        ]
-    else:
-        merge_command = [
-            'ffmpeg', '-y', '-i', file_path, '-i', APPEND_VIDEO_PATH,
-            '-filter_complex', '[0:v] [1:v] concat=n=2:v=1 [v]',
-            '-map', '[v]', merged_file_path
-        ]
 
     try:
         subprocess.run(merge_command, check=True)
@@ -153,7 +140,7 @@ async def doc(bot, update):
         img.resize((320, 320))
         img.save(ph_path, "JPEG")
 
-    await ms.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴘᴇʀꜱ Tʀyɪɴɢ Tᴏ Uᴩʟᴏᴀᴅɪɴɢ....")
+    await ms.edit("ɪʟʟᴇɢᴀʟ ᴅᴇᴠᴇʟᴏᴩᴇʀꜱ Tʀyɪɴɢ Tᴏ Uᴩʟᴏᴀᴅɪɴɢ....")
     type = update.data.split("_")[1]
     try:
         if type == "document":
@@ -194,4 +181,3 @@ async def doc(bot, update):
     os.remove(merged_file_path)
     if ph_path:
         os.remove(ph_path)
-        
